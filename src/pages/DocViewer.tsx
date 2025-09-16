@@ -103,38 +103,52 @@ const DocViewer = () => {
   setView(false);
 };
 
-  async function openFileInEtherpad(initialContent: string) {
+  // async function openFileInEtherpad(initialContent: string) {
+  //   try {
+  //     // Step 1: Always try creating pad (safe even if it already exists)
+  //     const createRes = await fetch(
+  //       `https://etherpad-437522952831.asia-south1.run.app/api/1.2.15/createPad?apikey=6fccb695d3eadd1c7ce830f0eb82399f7fac17551f77e8df0ecda93fc6561f5d&padID=${activePadId}`
+  //     );
+  //     const createData = await createRes.json();
+
+  //     // Step 2: Send text separately (POST body, not query string)
+  //     const setRes = await fetch(
+  //       `https://etherpad-437522952831.asia-south1.run.app/api/1.2.15/setText?apikey=6fccb695d3eadd1c7ce830f0eb82399f7fac17551f77e8df0ecda93fc6561f5d&padID=${activePadId}`,
+  //       {
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  //         body: new URLSearchParams({ text: initialContent }),
+  //       }
+  //     );
+
+  //     const setData = await setRes.json();
+  //     console.log("Pad created/set:", { createData, setData });
+  //   } catch (err) {
+  //     console.error("Error syncing pad:", err);
+  //   }
+  // }
+
+  async function setTextEtherPad(pad_id: string, initialContent: string){
     try {
-      // Step 1: Always try creating pad (safe even if it already exists)
-      const createRes = await fetch(
-        `https://etherpad-437522952831.asia-south1.run.app/api/1.2.15/createPad?apikey=6fccb695d3eadd1c7ce830f0eb82399f7fac17551f77e8df0ecda93fc6561f5d&padID=${activePadId}`
-      );
-      const createData = await createRes.json();
-
-      // Step 2: Send text separately (POST body, not query string)
-      const setRes = await fetch(
-        `https://etherpad-437522952831.asia-south1.run.app/api/1.2.15/setText?apikey=6fccb695d3eadd1c7ce830f0eb82399f7fac17551f77e8df0ecda93fc6561f5d&padID=${activePadId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ text: initialContent }),
-        }
-      );
-
-      const setData = await setRes.json();
-      console.log("Pad created/set:", { createData, setData });
-    } catch (err) {
-      console.error("Error syncing pad:", err);
+      const url = generalFunctions.createGcpUrl("/ether/create");
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ pad_id, initialContent }),
+      })
+    } catch (error) {
+      console.log("error", error)
     }
   }
 
-  async function getPadContent(padId: string) {
+  async function getPadContent(pad_id: string) {
     try {
-      const res = await fetch(
-        `https://etherpad-437522952831.asia-south1.run.app/api/1.2.15/getText?apikey=6fccb695d3eadd1c7ce830f0eb82399f7fac17551f77e8df0ecda93fc6561f5d&padID=${padId}`
-      );
+      const url = generalFunctions.createGcpUrl(`/ether/${pad_id}`);
+      const res = await fetch(url);
       const data = await res.json();
-      return data.data.text;
+      return data;
     } catch (error) {
       console.log("error", error);
     }
@@ -143,7 +157,8 @@ const DocViewer = () => {
   useEffect(() => {
     if (activePadId && fileContent?.content) {
       setContent(fileContent?.content);
-      openFileInEtherpad(fileContent?.content);
+      // openFileInEtherpad(fileContent?.content);
+      setTextEtherPad(activePadId, fileContent?.content);
       setSize(fileContent.content.length);
     }
   }, [activePadId, fileContent]);
@@ -274,6 +289,7 @@ const DocViewer = () => {
 
   async function handleCheckUpdate() {
     const latestContent = await getPadContent(activePadId);
+    console.log("latestContent from be", latestContent);
     const oldLength = fileContent?.content.length ?? 0;
     const newLength = latestContent.length;
     if (oldLength > 0 && newLength < 0.7 * oldLength) {
